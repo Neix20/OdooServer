@@ -4,13 +4,14 @@ import logging
 import pyodbc
 
 # Global Variable
+db_ssms_driver = "SQL Server Native Client 11.0"
 db_ssms_host = "47.254.234.86"
 db_ssms_name = "NTL" 
 db_ssms_username = "NTL"
 db_ssms_pwd = "ILoveVigtech88!"
 
 conn = pyodbc.connect(
-    'Driver={SQL Server Native Client 11.0};'
+    f'Driver={db_ssms_driver};'
     f'Server={db_ssms_host};'
     f'Database={db_ssms_name};'
     f'uid={db_ssms_username};'

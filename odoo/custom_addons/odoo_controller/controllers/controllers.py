@@ -11,9 +11,9 @@ from odoo.custom_addons.odoo_controller.sales_order.connection import *
 from odoo.custom_addons.odoo_controller.manufacturing_order.connection import *
 from odoo.custom_addons.odoo_controller.delivery_order.connection import *
 
-
 class OdooController(http.Controller):
     # Global Variable
+    db_ssms_driver = "SQL Server Native Client 11.0"
     db_ssms_host = "47.254.234.86"
     db_ssms_name = "NTL" 
     db_ssms_username = "NTL"
@@ -123,7 +123,7 @@ class OdooController(http.Controller):
 
         # Update in NTLSystem
         conn = pyodbc.connect(
-            'Driver={SQL Server Native Client 11.0};'
+            f'Driver={self.db_ssms_driver};'
             f'Server={self.db_ssms_host};'
             f'Database={self.db_ssms_name};'
             f'uid={self.db_ssms_username};'
@@ -359,15 +359,13 @@ class OdooController(http.Controller):
         obj = cursor_odoo.fetchone()
         return float(obj[0])
 
-
-
     @http.route('/odoo_controller/addMO', type='json', auth='public', methods=['POST'])
     def add_manufacture_order(self, **kwargs):
         resp = http.request.jsonrequest
 
         # Microsoft SQL Cursor
         conn_mssql = pyodbc.connect(
-            'Driver={SQL Server Native Client 11.0};'
+            f'Driver={self.db_ssms_driver};'
             f'Server={self.db_ssms_host};'
             f'Database={self.db_ssms_name};'
             f'uid={self.db_ssms_username};'
@@ -576,6 +574,6 @@ class OdooController(http.Controller):
             'lot_id': bom_lot["id"]
         })
 
-        manufacturing_order.sudo().button_mark_done()
+        # manufacturing_order.sudo().button_mark_done()
 
         print(f"Successfully generated Manufactured Order {manufacturing_order['name']}!")
