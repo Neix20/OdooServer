@@ -11,10 +11,10 @@ db_ssms_pwd = "ILoveVigtech88!"
 
 conn = pyodbc.connect(
     'Driver={SQL Server Native Client 11.0};'
-    f'Server={self.db_ssms_host};'
-    f'Database={self.db_ssms_name};'
-    f'uid={self.db_ssms_username};'
-    f'pwd={self.db_ssms_pwd}'
+    f'Server={db_ssms_host};'
+    f'Database={db_ssms_name};'
+    f'uid={db_ssms_username};'
+    f'pwd={db_ssms_pwd}'
 )
 
 

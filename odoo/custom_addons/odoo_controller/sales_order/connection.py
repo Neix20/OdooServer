@@ -16,10 +16,10 @@ db_psql_pwd = "arf11234"
 # Connect with NTL database
 conn_mssql = pyodbc.connect(
     'Driver={SQL Server Native Client 11.0};'
-    f'Server={self.db_ssms_host};'
-    f'Database={self.db_ssms_name};'
-    f'uid={self.db_ssms_username};'
-    f'pwd={self.db_ssms_pwd}'
+    f'Server={db_ssms_host};'
+    f'Database={db_ssms_name};'
+    f'uid={db_ssms_username};'
+    f'pwd={db_ssms_pwd}'
 )
 
 # Creating the ntl cursor object
@@ -27,10 +27,10 @@ cursor_ntl = conn_mssql.cursor()
 
 # Connect with Odoo database
 conn_psql = psycopg2.connect(
-    database=self.db_psql_name,
-    user=self.db_psql_username,
-    password=self.db_psql_pwd,
-    host=self.db_psql_host,
+    database=db_psql_name,
+    user=db_psql_username,
+    password=db_psql_pwd,
+    host=db_psql_host,
     port='5432'
 )
 
