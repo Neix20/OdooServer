@@ -24,6 +24,23 @@ class OdooController(http.Controller):
     db_psql_username = "txe1"
     db_psql_pwd = "arf11234"
 
+    # Global Cursor
+    conn_mssql = pyodbc.connect(
+        'Driver={' + db_ssms_driver + '};'
+        f'Server={db_ssms_host};'
+        f'Database={db_ssms_name};'
+        f'uid={db_ssms_username};'
+        f'pwd={db_ssms_pwd}'
+    )
+
+    conn_psql = psycopg2.connect(
+        database=db_psql_name,
+        user=db_psql_username,
+        password=db_psql_pwd,
+        host=db_psql_host,
+        port='5432'
+    )
+
     @http.route('/odoo_controller/odoo_controller', auth='public')
     def index(self):
         stmt = ""
@@ -75,9 +92,9 @@ class OdooController(http.Controller):
 
         for product in product_list:
             sku = product['sku']
-            qty = int(product['qty'])
-            width = int(product['width'])
-            height = int(product['height'])
+            qty = float(product['qty'])
+            width = float(product['width'])
+            height = float(product['height'])
 
             # Get Product
             product_models = http.request.env["product.product"].sudo().search(
@@ -97,13 +114,13 @@ class OdooController(http.Controller):
                 (0, 0, {
                     'product_id': obj["id"],
                     'product_uom': uom_id,
-                    'product_uom_qty': qty
+                    'product_uom_qty': float(qty * height / 100)
                 })
             )
 
             sale_order_line_list.append(
                 (0, 0, {
-                    'name': f"[{sku}] {product_tmpl['name']}|{height}cm|{qty}",
+                    'name': f"[{sku}] {product_tmpl['name']}|{int(height)}cm|{int(qty)}",
                     'display_type': 'line_note'
                 })
             )
@@ -121,17 +138,8 @@ class OdooController(http.Controller):
         so_id = sale_order['id']
         so_name = sale_order['name']
 
-        # Update in NTLSystem
-        conn = pyodbc.connect(
-            f'Driver={self.db_ssms_driver};'
-            f'Server={self.db_ssms_host};'
-            f'Database={self.db_ssms_name};'
-            f'uid={self.db_ssms_username};'
-            f'pwd={self.db_ssms_pwd}'
-        )
-
         # Creating the ntl cursor object
-        cursor = conn.cursor()
+        cursor = self.conn_mssql.cursor()
 
         cursor.execute(
             "SELECT TOP 1 c.name \"Platform\", a.id "
@@ -144,7 +152,9 @@ class OdooController(http.Controller):
             "ORDER BY a.id DESC;"
         )
 
-        for (name, _id) in cursor:
+        obj_list = [_obj for _obj in cursor]
+
+        for (name, _id) in obj_list:
             update_order_odoo(_id, so_id, so_name)
 
         # Confirm Sale Order
@@ -286,11 +296,6 @@ class OdooController(http.Controller):
 
         print(sale_order_obj['id'])
 
-        # Get Stock Picking Type Object
-        stock_picking_type_obj = http.request.env["stock.picking.type"].sudo().search(
-            [("name", "=", "Delivery Orders")]
-        )[0]
-
         # Update Stock Picking
         stock_picking_obj = http.request.env['stock.picking'].sudo().search(
             [("sale_id", "=", sale_order_obj["id"])]
@@ -298,8 +303,11 @@ class OdooController(http.Controller):
 
         print(stock_picking_obj["name"])
 
-        # Confirm Stock Picking Delivery Order
-        stock_picking_obj.action_confirm()
+        # Set Quantites
+        stock_picking_obj.action_set_quantities_to_reservation()
+
+        # Select Button Validate
+        stock_picking_obj.button_validate()
 
         # Update TNtlOrder
         update_do_status(order_code)
@@ -307,15 +315,7 @@ class OdooController(http.Controller):
         return resp
 
     def get_warehouse_qty(self, sku):
-        conn_psql = psycopg2.connect(
-            database=self.db_psql_name,
-            user=self.db_psql_username,
-            password=self.db_psql_pwd,
-            host=self.db_psql_host,
-            port='5432'
-        )
-
-        cursor_odoo = conn_psql.cursor()
+        cursor_odoo = self.conn_psql.cursor()
 
         cursor_odoo.execute(
             f"""
@@ -335,15 +335,7 @@ class OdooController(http.Controller):
         return float(warehouse_obj[1])
 
     def get_bom_qty(self, sku):
-        conn_psql = psycopg2.connect(
-            database=self.db_psql_name,
-            user=self.db_psql_username,
-            password=self.db_psql_pwd,
-            host=self.db_psql_host,
-            port='5432'
-        )
-
-        cursor_odoo = conn_psql.cursor()
+        cursor_odoo = self.conn_psql.cursor()
 
         cursor_odoo.execute(
             f"""
@@ -364,26 +356,10 @@ class OdooController(http.Controller):
         resp = http.request.jsonrequest
 
         # Microsoft SQL Cursor
-        conn_mssql = pyodbc.connect(
-            f'Driver={self.db_ssms_driver};'
-            f'Server={self.db_ssms_host};'
-            f'Database={self.db_ssms_name};'
-            f'uid={self.db_ssms_username};'
-            f'pwd={self.db_ssms_pwd}'
-        )
-
-        cursor_ntl = conn_mssql.cursor()
+        cursor_ntl = self.conn_mssql.cursor()
 
         # Postgres Cursor
-        conn_psql = psycopg2.connect(
-            database=self.db_psql_name,
-            user=self.db_psql_username,
-            password=self.db_psql_pwd,
-            host=self.db_psql_host,
-            port='5432'
-        )
-
-        cursor_odoo = conn_psql.cursor()
+        cursor_odoo = self.conn_psql.cursor()
 
         # Stock Name
         stock_name = resp['stock_name']
@@ -433,7 +409,6 @@ class OdooController(http.Controller):
 
                     self.assemble_product(wp_prod_obj['id'], 50, location_obj, location_obj, company_obj)
 
-
             # 2. Create Finished Goods
             fp_prod_obj = http.request.env['product.product'].sudo().search(
                 [("default_code", "=", "FG" + sku)]
@@ -441,11 +416,12 @@ class OdooController(http.Controller):
 
             # Generate Manufacture Order
             bom_description = self.get_bom_description(fp_prod_obj['id'])
+            print(bom_description)
 
             self.assemble_product(fp_prod_obj['id'], manufacture_qty, location_obj, location_obj, company_obj)
 
-            # Mark TNtlSummaryItem Status As Complete
-            # update_complete_time(sku)
+            # 3. Mark TNtlSummaryItem Status As Complete
+            # manufacture_update_summary_item("FG" + sku)
 
         return resp
 
@@ -529,7 +505,9 @@ class OdooController(http.Controller):
 
         manufacturing_order.sudo().action_confirm()
 
+
         # Create New Lot
+        # Not Enough Component
         bom_lot = http.request.env['stock.production.lot'].sudo().create(
             [{
                 'product_id': bom_line_prod_id,
@@ -557,8 +535,6 @@ class OdooController(http.Controller):
             ]
         })
 
-        immediate_production.sudo().process()
-
         # Get Stock Move Based on Product ID
         stock_move_obj = http.request.env["stock.move"].sudo().search(
             [("product_id", "=", bom_line_prod_id)]
@@ -574,6 +550,8 @@ class OdooController(http.Controller):
             'lot_id': bom_lot["id"]
         })
 
-        # manufacturing_order.sudo().button_mark_done()
+        immediate_production.sudo().process()
+
+        manufacturing_order.sudo().button_mark_done()
 
         print(f"Successfully generated Manufactured Order {manufacturing_order['name']}!")

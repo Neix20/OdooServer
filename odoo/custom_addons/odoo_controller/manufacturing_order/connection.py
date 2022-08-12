@@ -11,24 +11,33 @@ db_ssms_username = "NTL"
 db_ssms_pwd = "ILoveVigtech88!"
 
 conn = pyodbc.connect(
-    f'Driver={db_ssms_driver};'
+    'Driver={' + db_ssms_driver + '};'
     f'Server={db_ssms_host};'
     f'Database={db_ssms_name};'
     f'uid={db_ssms_username};'
     f'pwd={db_ssms_pwd}'
 )
 
-
-def update_complete_time(sku):
+def manufacture_update_summary_item(sku):
     cursor = conn.cursor()
 
     inc_sta_id = 12
     c_sta_id = 11
 
     # Get TNtlSummaryItem 
-    cursor.execute(f"SELECT * FROM dbo.TNtlSummaryItem WHERE sku='{sku}' AND status_id={inc_sta_id};")
+    cursor.execute(
+        f"""
+        SELECT * FROM dbo.TNtlSummaryItem
+        WHERE sku='{sku}'
+        AND status_id={inc_sta_id};
+        """
+    )
+
+    print("Hello World")
 
     obj_list = [_obj for _obj in cursor]
+
+    print(len(obj_list))
 
     for _obj in obj_list:
 
@@ -55,7 +64,6 @@ def update_complete_time(sku):
         cursor.commit()
 
         logging.info(f"EXEC NSP_TNtlSummaryItem_Update '{stmt}';")
-
 
 if __name__ == '__main__':
     update_complete_time("FGSTSB150")
