@@ -9,7 +9,7 @@ db_ssms_username = "NTL"
 db_ssms_pwd = "ILoveVigtech88!"
 
 db_psql_host = "localhost"
-db_psql_name = "odoo15"
+db_psql_name = "odoo_new"
 db_psql_username = "txe1"
 db_psql_pwd = "arf11234"
 

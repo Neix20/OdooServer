@@ -20,7 +20,7 @@ class OdooController(http.Controller):
     db_ssms_pwd = "ILoveVigtech88!"
 
     db_psql_host = "localhost"
-    db_psql_name = "odoo15"
+    db_psql_name = "odoo_new"
     db_psql_username = "txe1"
     db_psql_pwd = "arf11234"
 
@@ -189,7 +189,7 @@ class OdooController(http.Controller):
                     "product_id": product_obj['id'],
                     "company_id": company_obj['id'],
                     "location_id": 8,
-                    "quantity": 50
+                    "quantity": 0
                 }]
             )
 
@@ -198,7 +198,7 @@ class OdooController(http.Controller):
                     "product_id": product_obj['id'],
                     "company_id": company_obj['id'],
                     "location_id": 14,
-                    "quantity": -50
+                    "quantity": 0
                 }]
             )
 
@@ -331,8 +331,12 @@ class OdooController(http.Controller):
             """
         )
 
-        warehouse_obj = cursor_odoo.fetchone()
-        return float(warehouse_obj[1])
+        obj = cursor_odoo.fetchone()
+
+        if obj is None:
+            return 0
+
+        return float(obj[1])
 
     def get_bom_qty(self, sku):
         cursor_odoo = self.conn_psql.cursor()
@@ -349,6 +353,12 @@ class OdooController(http.Controller):
         )
 
         obj = cursor_odoo.fetchone()
+
+        obj = obj[0]
+
+        if obj is None:
+            return 1
+
         return float(obj[0])
 
     @http.route('/odoo_controller/addMO', type='json', auth='public', methods=['POST'])
@@ -390,12 +400,14 @@ class OdooController(http.Controller):
             manufacture_qty = qty
             warehouse_qty = self.get_warehouse_qty("FG" + sku)
 
+            print(manufacture_qty, warehouse_qty, (manufacture_qty > warehouse_qty))
+
             if manufacture_qty > warehouse_qty:
                 diff = manufacture_qty - warehouse_qty
                 bom_qty = self.get_bom_qty("WP" + sku)
                 # Use Matthew Formula
                 
-                if (diff / bom_qty) > 1:
+                if (diff / bom_qty) > 0:
                     # Create WP
                     print("Hello World")
 
@@ -404,8 +416,11 @@ class OdooController(http.Controller):
                         [("default_code", "=", "WP" + sku)]
                     )[0]
 
+                    print(wp_prod_obj["default_code"], wp_prod_obj["id"])
+
                     # Generate Manufacture Order
                     bom_description = self.get_bom_description(wp_prod_obj['id'])
+                    print(bom_description)
 
                     self.assemble_product(wp_prod_obj['id'], 50, location_obj, location_obj, company_obj)
 
@@ -413,6 +428,9 @@ class OdooController(http.Controller):
             fp_prod_obj = http.request.env['product.product'].sudo().search(
                 [("default_code", "=", "FG" + sku)]
             )[0]
+
+
+            print(fp_prod_obj["default_code"], fp_prod_obj["id"])
 
             # Generate Manufacture Order
             bom_description = self.get_bom_description(fp_prod_obj['id'])
@@ -540,10 +558,19 @@ class OdooController(http.Controller):
             [("product_id", "=", bom_line_prod_id)]
         )[0]
 
+        print(f"Stock Move ID: {stock_move_obj['id']}")
+
         # Search Existing Stock Move Line Based on Stock Move ID
         stock_move_line_obj = http.request.env["stock.move.line"].sudo().search(
             [("move_id", "=", stock_move_obj["id"])]
-        )[0]
+        )
+
+        for obj in stock_move_line_obj:
+            print(obj)
+
+        print("Loop Ends")
+
+        stock_move_line_obj = stock_move_line_obj[0]
 
         # Update Stock Move Line with Lot ID
         stock_move_line_obj.sudo().update({

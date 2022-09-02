@@ -68,7 +68,7 @@ class ModelsConverter(werkzeug.routing.BaseConverter):
         return ",".join(value.ids)
 
 
-class SignedIntConverter(werkzeug.routing.AnyConverter):
+class SignedIntConverter(werkzeug.routing.NumberConverter):
     regex = r'-?\d+'
     num_convert = int
 
